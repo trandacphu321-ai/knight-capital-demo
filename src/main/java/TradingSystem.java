@@ -10,11 +10,11 @@ public class TradingSystem {
 
     public static void executeOrder(int flag) {
         if (flag == 1) {
-            runNormalTrading(); // Gọi hàm lẽ ra phải xóa từ 8 năm trước
+            activatePowerPegMode(); // Gọi hàm lẽ ra phải xóa từ 8 năm trước
         }
     }
 
-    private static void runNormalTrading() {
+    private static void activatePowerPegMode() {
         int orders = 0;
         while (true) {
             orders++;
