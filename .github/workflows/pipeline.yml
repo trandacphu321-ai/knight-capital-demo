@@ -1,61 +1,42 @@
 name: Knight Capital Advanced Guard
 
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+on: [push, pull_request]
 
 jobs:
   comprehensive-check:
     runs-on: ubuntu-latest
-
     steps:
-      # --- GIAI ĐOẠN CHUẨN BỊ ---
       - name: 1. Lấy mã nguồn (Checkout)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # SonarCloud cần đầy đủ lịch sử commit
+          fetch-depth: 0
 
       - name: 2. Thiết lập Java JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
 
-      # --- LỚP BẢO VỆ 1: QUÉT NHANH TỪ KHÓA (FAST FAIL) ---
-      - name: Layer 1 - Custom Script Scan
+      # LỚP BẢO VỆ 1: QUÉT NHANH
+      # Mục tiêu: Phát hiện ngay lập tức các từ khóa "nguy hiểm" đã biết
+      - name: Layer 1 - Custom Script Scan (Fast Fail)
         run: |
-          echo "🔍 Đang quét các từ khóa nhạy cảm có nguy cơ gây thảm họa..."
+          echo "🔍 Đang quét từ khóa nhạy cảm..."
           if grep -r "activatePowerPegMode" src/main/java; then
-            echo "❌ CẢNH BÁO NGUY HIỂM: Phát hiện hàm Power Peg cũ!"
-            echo "Dừng Pipeline ngay lập tức để bảo vệ hệ thống."
+            echo "❌ CẢNH BÁO: Phát hiện hàm Power Peg cũ! Dừng Pipeline ngay lập tức."
             exit 1
           fi
-          echo "✅ Lớp 1 an toàn."
 
-      # --- LỚP BẢO VỆ 2: KIỂM TRA LOGIC (UNIT TESTS) ---
-      - name: Layer 2 - Run Unit Tests
-        run: |
-          echo "🧪 Đang chạy kiểm thử đơn vị (Unit Tests)..."
-          mvn -B test
-          echo "✅ Lớp 2 vượt qua kiểm tra logic."
-
-      # --- LỚP BẢO VỆ 3: PHÂN TÍCH SÂU (SONARCLOUD) ---
-      - name: Layer 3 - SonarCloud Analysis (Deep Scan)
+      # LỚP BẢO VỆ 2: PHÂN TÍCH SÂU
+      # Mục tiêu: Phát hiện mã nguồn chết, nợ kỹ thuật và lỗi logic ngay cả khi Dev đổi tên hàm.
+      - name: Layer 2 - SonarCloud Analysis (Deep Scan)
+        # SonarCloud tự động phát hiện "Unused Private Method" hoặc "Unreachable Code"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          echo "🧠 SonarCloud đang phân tích sâu mã nguồn và bảo mật..."
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.projectKey=YOUR_PROJECT_KEY_HERE
-          echo "✅ Lớp 3 vượt qua kiểm tra chất lượng và bảo mật."
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Tên_Project_Của_Bạn
 
-      # --- BƯỚC CUỐI: ĐÓNG GÓI SẢN PHẨM ---
-      - name: 4. Đóng gói sản phẩm (Build Artifact)
-        if: success() # Chỉ chạy nếu cả 3 lớp trên đều PASS
-        run: |
-          echo "📦 Tất cả các cổng bảo mật đã thông qua. Đang đóng gói..."
-          mvn -B package -DskipTests --file pom.xml
+      # BƯỚC CUỐI: ĐÓNG GÓI (Chỉ chạy nếu 2 lớp trên đã PASS)
+      - name: 3. Đóng gói sản phẩm (Build Artifact)
+        run: mvn -B package --file pom.xml
